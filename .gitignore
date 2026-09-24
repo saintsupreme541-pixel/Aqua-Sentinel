@@ -1,0 +1,44 @@
+# python
+backend/.venv/
+**/.venv*/
+**/venv*/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+
+# node / frontend / website
+frontend/node_modules/
+frontend/dist/
+website/node_modules/
+website/dist/
+**/node_modules/
+**/dist/
+*.tsbuildinfo
+
+# logs & dev artifacts
+*.log
+**/*.log
+
+# large dataset folders and zips
+24574879/
+*.zip
+Users_*.zip
+
+# runtime data (generated)
+data/runtime/
+data/splits/
+*.db
+*.db-wal
+*.db-shm
+
+# OS
+.DS_Store
+Thumbs.db
+
+# codebuff agent workspace (logs, scratch files, stale preview data)
+.freebuff/

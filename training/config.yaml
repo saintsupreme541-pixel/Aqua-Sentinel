@@ -1,0 +1,67 @@
+# AQUA-SENTINEL training configuration — shared across all tasks.
+# Data is packaged from `training/package_for_colab.py`; every path here is
+# relative to the extracted bundle root on Colab.
+
+seed: 20260905
+
+paths:
+  bundle: /content/aqua_train
+  out: /content/aqua_train/runs
+
+detection:
+  # classes.txt order MUST equal the backend registry class order.
+  # Semantic review v3 (docs/dataset-cards.md): only evidence-backed classes
+  # are trained. ghost_net / pipe / cylinder have NO real labelled examples
+  # -> not trained, not claimed; at inference they surface via the
+  # Unknown-Anomaly pathway. Tire keeps its OWN class (toroidal != cylinder).
+  unsupported_classes: [ghost_net, pipe, cylinder, net_like]
+  classes: [wreck, debris, structure, tire]
+  imgsz: 640            # app detector letterboxes to 640
+  model: yolov8n.pt     # smallest; sonar labels are scarce
+  epochs: 120
+  batch: 16
+  patience: 30
+  # Sonar-conserving augmentation only — no color/hue transforms.
+  aug:
+    hsv_v: 0.35         # brightness only (sonar gain variation)
+    hsv_s: 0.0
+    hsv_h: 0.0
+    degrees: 10.0       # survey heading variation
+    translate: 0.08
+    scale: 0.4
+    shear: 2.0
+    flipud: 0.15
+    fliplr: 0.5
+    mosaic: 0.6
+    mixup: 0.05
+    copy_paste: 0.0
+    erasing: 0.0
+  conf: 0.15            # keep app operating point during val
+
+segmentation:
+  imgsz: 512            # app segmenter runs full-image logits; training tiles
+  batch: 8
+  epochs: 120
+  patience: 30
+  lr: 0.001
+  val_fraction_of_train_sites: 0.15   # site-level, never random-pixel
+  augment:
+    hflip: 0.5
+    vflip: 0.15
+    rot90: true
+    brightness: 0.2
+    speckle_noise: 0.05
+
+classifier:
+  imgsz: 64             # app ONNX classifier consumes 64x64 crops
+  batch: 128
+  epochs: 60
+  patience: 20
+  lr: 0.001
+  # sources: AI4Shipwrecks wreck crops (artificial), SCTD ship/aircraft crops
+  # (artificial; human crops EXCLUDED — not debris), MD-FLS
+  # debris/structure/tire crops (artificial; chain crops used ONLY here —
+  # never a detector class), MD-FLS Wall + AI4 terrain crops
+  # (natural/background context), KLSG whole images downscaled (artificial).
+  artificial_sources: [ai4shipwrecks, sctd, md_fls, klsg]
+  natural_sources: [md_fls_wall, ai4_terrain]

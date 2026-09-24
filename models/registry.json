@@ -1,0 +1,23 @@
+{
+  "detection": {
+    "backend": "onnx",
+    "path": "models/weights/yolo-sss.onnx",
+    "classes": ["wreck", "debris", "structure", "tire"],
+    "input_size": 640,
+    "conf_threshold": 0.15,
+    "nms_iou": 0.45,
+    "format": "v8",
+    "weights_hint": "Unified YOLOv8n detector (input [1,3,640,640], output [1,8,8400]). Class order MUST match classes: [wreck, debris, structure, tire] — supervised classes only (semantic review v3, docs/dataset-cards.md). ghost_net/pipe/cylinder are not trained (no verified data): they surface via the Unknown-Anomaly pathway."
+  },
+  "segmentation": {
+    "backend": "onnx",
+    "path": "models/weights/unet-sss.onnx",
+    "num_classes": 1,
+    "weights_hint": "U-Net wreck-mask segmenter (static input/output [1,1,512,512] logits); the adapter resizes full-res images in and logits back out"
+  },
+  "classifier": {
+    "backend": "onnx",
+    "path": "models/weights/natart-sss.onnx",
+    "weights_hint": "Natural-vs-artificial CNN (input [1,1,64,64], output 2 logits — index 0 natural, index 1 artificial; adapter applies softmax)"
+  }
+}

@@ -1,0 +1,273 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-abyss-950 text-slate-200 antialiased;
+  background-image: radial-gradient(1200px 500px at 80% -10%, rgba(6, 182, 212, 0.08), transparent),
+    radial-gradient(900px 400px at 10% 110%, rgba(14, 116, 144, 0.06), transparent);
+}
+
+@layer components {
+  /* §9: translucent-but-solid over the photographic background — data stays
+     dominant; no heavy blur on the many small cards (perf, §10). */
+  .card {
+    @apply rounded-xl border border-slate-700/60 bg-abyss-900/85 shadow-lg shadow-black/25;
+  }
+  .card-pad {
+    @apply p-4;
+  }
+  /* §10: subtle hover response — lift + border glow + faint illumination */
+  .card-hover {
+    @apply transition-all duration-200;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    border-color: rgba(34, 211, 238, 0.35);
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.35),
+      0 0 18px rgba(6, 182, 212, 0.08);
+    background-color: rgba(8, 21, 39, 0.85);
+  }
+  .btn {
+    @apply inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-sonar-500 text-abyss-950 hover:bg-sonar-400;
+  }
+  .btn-primary:not(:disabled):hover {
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.35);
+  }
+  .btn-primary:not(:disabled):active,
+  .btn-ghost:not(:disabled):active,
+  .btn-danger:not(:disabled):active {
+    transform: scale(0.98); /* §25: slight press */
+  }
+  .btn-ghost {
+    @apply btn border border-slate-600 text-slate-200 hover:border-sonar-500 hover:text-sonar-400;
+  }
+  .btn-danger {
+    @apply btn bg-rose-600 text-white hover:bg-rose-500;
+  }
+  .label {
+    @apply block text-[11px] font-semibold uppercase tracking-wider text-slate-400;
+  }
+  .input {
+    @apply w-full rounded-lg border border-slate-600 bg-abyss-850 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sonar-500;
+  }
+  .mono {
+    @apply font-mono text-[12px];
+  }
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #1e3a5f transparent;
+  }
+  /* §32: vignette — attention toward content, never dramatic */
+  .aqua-vignette::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, transparent 55%, rgba(2, 8, 20, 0.55) 100%);
+  }
+}
+
+/* ==========================================================================
+   Marine animation system (§39) — one home for every keyframe.
+   All animations use transform/opacity only (GPU-friendly, §3).
+   ========================================================================== */
+
+@keyframes aqua-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes aqua-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes aqua-rise {
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes aqua-drawer-in {
+  from { opacity: 0; transform: translateX(15px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes aqua-detection-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* §18: selected-target concentric halo (selection feedback, NOT confidence) */
+@keyframes aqua-halo {
+  0% { box-shadow: 0 0 0 0 rgba(226, 232, 240, 0.55), 0 0 8px rgba(34, 211, 238, 0.5); }
+  70% { box-shadow: 0 0 0 9px rgba(226, 232, 240, 0), 0 0 8px rgba(34, 211, 238, 0.5); }
+  100% { box-shadow: 0 0 0 0 rgba(226, 232, 240, 0), 0 0 8px rgba(34, 211, 238, 0.5); }
+}
+
+/* §24: system status dot — slow, calm */
+@keyframes aqua-status {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* §27: skeleton shimmer */
+@keyframes aqua-shimmer {
+  from { background-position: -200px 0; }
+  to { background-position: 200px 0; }
+}
+
+/* §12/§13: sonar sweep — an ambient radial wedge; used ONLY while a real
+   job is processing or an image is genuinely loading (never fake-idle). */
+@keyframes aqua-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@layer utilities {
+  .animate-fade-in { animation: aqua-fade-in 0.35s ease-out both; }
+  .animate-slide-up { animation: aqua-slide-up 0.4s ease-out both; }
+  .animate-rise { animation: aqua-rise 0.45s cubic-bezier(0.22, 0.8, 0.36, 1) both; }
+  .animate-drawer-in { animation: aqua-drawer-in 0.3s ease-out both; }
+  .animate-detection-in { animation: aqua-detection-in 0.35s ease-out both; transform-origin: center; transform-box: fill-box; }
+  .animate-status-pulse { animation: aqua-status 3.2s ease-in-out infinite; }
+  .animate-halo { animation: aqua-halo 2.2s ease-out infinite; }
+  .aqua-selected { animation: aqua-halo 2.2s ease-out infinite; }
+
+  .aqua-skeleton {
+    background: linear-gradient(90deg, rgba(30, 58, 95, 0.25) 25%, rgba(56, 89, 138, 0.35) 50%, rgba(30, 58, 95, 0.25) 75%);
+    background-size: 200px 100%;
+    animation: aqua-shimmer 1.6s linear infinite;
+  }
+
+  /* §13: rotating radial wedge overlay (purely visual) */
+  .aqua-sweep::before {
+    content: "";
+    position: absolute;
+    inset: -35%;
+    background: conic-gradient(from 0deg, rgba(34, 211, 238, 0.14) 0deg, transparent 55deg, transparent 360deg);
+    border-radius: 9999px;
+    animation: aqua-sweep 4.5s linear infinite;
+    pointer-events: none;
+  }
+
+  /* §8: brand shine — subtle, slow, skews across the wordmark */
+  .aqua-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .aqua-shine::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 45%;
+    left: -60%;
+    background: linear-gradient(105deg, transparent, rgba(148, 233, 255, 0.18), transparent);
+    transform: skewX(-18deg);
+    animation: aqua-shine-move 6.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes aqua-shine-move {
+    0%, 55% { left: -60%; }
+    85%, 100% { left: 130%; }
+  }
+}
+
+/* Ambient underwater background (§2): the supplied photograph + gradient +
+   glow + rays + few particles.  Fixed, pointer-events-none, behind all
+   content (z-0; app content is z-10). */
+.aqua-ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+/* Layers 1a/1b — two realistic underwater photographs (A: original deep-
+   ocean scene, B: cinematic seascape with light rays and shipwreck): cover
+   (aspect preserved, no stretch), fixed so they stay stable while panels
+   scroll (§4/§5).  B crossfades A→B→A on top of A — two preloaded layers,
+   opacity-only, so there is never an image swap, flash, or gap.  The page
+   background is decorative underwater photography only; sonar imagery is
+   confined to the analysis features (Lab / Explorer / sonar panel). */
+.aqua-ambient .aqua-photo,
+.aqua-ambient .aqua-photo-b {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+.aqua-ambient .aqua-photo-b {
+  /* §1: 24s loop — 8s hold A, 4s fade up, 8s hold B, 4s fade down. */
+  animation: aqua-crossfade 24s ease-in-out infinite;
+  will-change: opacity;
+  backface-visibility: hidden;
+}
+/* §1: slow A→B→A opacity crossfade.  No zoom/spin/parallax; the images
+   never move — only the opacity of layer B changes. */
+@keyframes aqua-crossfade {
+  0%, 33.33% { opacity: 0; }
+  50% { opacity: 1; }
+  83.33% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* Layer 2 — tuned navy overlay (§6): one shared gradient above BOTH image
+   layers.  Center-left stays clearer (where the photo has its wave/ray
+   detail), edges and the data-dense right side get more cover.  ~20–30%
+   visual weight for the atmosphere, 70–80% for the data (§37). */
+.aqua-ambient .aqua-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(3, 15, 32, 0.55) 0%, rgba(4, 20, 40, 0.3) 32%, rgba(3, 16, 34, 0.38) 66%, rgba(2, 12, 26, 0.62) 100%),
+    linear-gradient(100deg, rgba(3, 16, 34, 0.1) 0%, rgba(3, 14, 30, 0.22) 55%, rgba(2, 10, 24, 0.38) 100%);
+}
+.aqua-ambient .aqua-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(900px 480px at 82% -8%, rgba(6, 182, 212, 0.075), transparent 65%),
+    radial-gradient(760px 420px at 8% 108%, rgba(14, 116, 144, 0.06), transparent 60%);
+}
+
+/* ==========================================================================
+   §4: reduced motion — stop all movement, keep static styling
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-rise,
+  .animate-drawer-in,
+  .animate-detection-in,
+  .animate-status-pulse,
+  .animate-halo,
+  .aqua-selected,
+  .aqua-skeleton,
+  .aqua-shine::after,
+  .aqua-sweep::before,
+  .aqua-ambient .aqua-photo-b {
+    animation: none !important;
+  }
+  /* §8: reduced motion → static photo, no crossfade */
+  .aqua-ambient .aqua-photo-b {
+    opacity: 0;
+  }
+  .card-hover,
+  .card-hover:hover {
+    transform: none;
+    transition: none;
+  }
+}

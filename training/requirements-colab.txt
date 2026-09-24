@@ -1,0 +1,15 @@
+# AQUA-SENTINEL — Colab training requirements (GPU runtime)
+# Install with: pip install -r training/requirements-colab.txt
+#
+# Colab already ships torch/cuda; we pin only what we must control.
+ultralytics>=8.2,<9          # YOLOv8 training + ONNX export
+onnx>=1.16
+onnxruntime>=1.18            # post-export sanity check (CPU)
+onnxsim>=0.4.36              # simplify exports for the app's generic parser
+torch>=2.1
+torchvision>=0.16
+opencv-python-headless>=4.9
+numpy>=1.26
+pyyaml>=6.0
+tqdm>=4.66
+scikit-learn>=1.4            # classifier metrics

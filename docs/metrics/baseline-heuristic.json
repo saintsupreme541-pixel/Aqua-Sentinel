@@ -1,0 +1,295 @@
+{
+  "combined": {
+    "tp": 32,
+    "fp": 100,
+    "fn": 27
+  },
+  "sets": [
+    {
+      "manifest": "synthetic_sss",
+      "name": "Synthetic SSS survey (GPS demo)",
+      "backend": "heuristic",
+      "images": 7,
+      "gt_objects": 7,
+      "tp": 5,
+      "fp": 4,
+      "fn": 2,
+      "precision": 0.5556,
+      "recall": 0.7143,
+      "f1": 0.625,
+      "false_alarms_per_image": 0.571,
+      "images_with_false_alarms": 4,
+      "mean_dice": null,
+      "per_image": [
+        {
+          "image": "Images/synthetic_sss_pipe_00.png",
+          "gt_objects": 1,
+          "detections": 2,
+          "tp": 1,
+          "fp": 1,
+          "fn": 0
+        },
+        {
+          "image": "Images/synthetic_sss_ghost_net_01.png",
+          "gt_objects": 1,
+          "detections": 1,
+          "tp": 0,
+          "fp": 1,
+          "fn": 1
+        },
+        {
+          "image": "Images/synthetic_sss_wreck_02.png",
+          "gt_objects": 1,
+          "detections": 2,
+          "tp": 1,
+          "fp": 1,
+          "fn": 0
+        },
+        {
+          "image": "Images/synthetic_sss_rock_03.png",
+          "gt_objects": 1,
+          "detections": 0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 1
+        },
+        {
+          "image": "Images/synthetic_sss_cylinder_04.png",
+          "gt_objects": 1,
+          "detections": 1,
+          "tp": 1,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "image": "Images/synthetic_sss_debris_05.png",
+          "gt_objects": 1,
+          "detections": 1,
+          "tp": 1,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "image": "Images/synthetic_sss_ghost_net_06.png",
+          "gt_objects": 1,
+          "detections": 2,
+          "tp": 1,
+          "fp": 1,
+          "fn": 0
+        }
+      ],
+      "warning": ""
+    },
+    {
+      "manifest": "md_fls_watertank",
+      "name": "MD-FLS Watertank (demo subset)",
+      "backend": "heuristic",
+      "images": 24,
+      "gt_objects": 52,
+      "tp": 27,
+      "fp": 96,
+      "fn": 25,
+      "precision": 0.2195,
+      "recall": 0.5192,
+      "f1": 0.3086,
+      "false_alarms_per_image": 4.0,
+      "images_with_false_alarms": 23,
+      "mean_dice": 0.4139,
+      "per_image": [
+        {
+          "image": "Images/marine-debris-aris3k-0.png",
+          "gt_objects": 2,
+          "detections": 5,
+          "tp": 1,
+          "fp": 4,
+          "fn": 1
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1067.png",
+          "gt_objects": 2,
+          "detections": 3,
+          "tp": 1,
+          "fp": 2,
+          "fn": 1
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1136.png",
+          "gt_objects": 3,
+          "detections": 4,
+          "tp": 1,
+          "fp": 3,
+          "fn": 2
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1205.png",
+          "gt_objects": 3,
+          "detections": 5,
+          "tp": 1,
+          "fp": 4,
+          "fn": 2
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1275.png",
+          "gt_objects": 2,
+          "detections": 9,
+          "tp": 1,
+          "fp": 8,
+          "fn": 1
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1344.png",
+          "gt_objects": 2,
+          "detections": 7,
+          "tp": 2,
+          "fp": 5,
+          "fn": 0
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1413.png",
+          "gt_objects": 2,
+          "detections": 5,
+          "tp": 2,
+          "fp": 3,
+          "fn": 0
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1483.png",
+          "gt_objects": 1,
+          "detections": 6,
+          "tp": 1,
+          "fp": 5,
+          "fn": 0
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1552.png",
+          "gt_objects": 1,
+          "detections": 2,
+          "tp": 0,
+          "fp": 2,
+          "fn": 1
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1621.png",
+          "gt_objects": 2,
+          "detections": 4,
+          "tp": 2,
+          "fp": 2,
+          "fn": 0
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1691.png",
+          "gt_objects": 3,
+          "detections": 10,
+          "tp": 1,
+          "fp": 9,
+          "fn": 2
+        },
+        {
+          "image": "Images/marine-debris-aris3k-1760.png",
+          "gt_objects": 3,
+          "detections": 7,
+          "tp": 1,
+          "fp": 6,
+          "fn": 2
+        },
+        {
+          "image": "Images/marine-debris-aris3k-183.png",
+          "gt_objects": 1,
+          "detections": 3,
+          "tp": 1,
+          "fp": 2,
+          "fn": 0
+        },
+        {
+          "image": "Images/marine-debris-aris3k-218.png",
+          "gt_objects": 2,
+          "detections": 4,
+          "tp": 0,
+          "fp": 4,
+          "fn": 2
+        },
+        {
+          "image": "Images/marine-debris-aris3k-288.png",
+          "gt_objects": 2,
+          "detections": 5,
+          "tp": 2,
+          "fp": 3,
+          "fn": 0
+        },
+        {
+          "image": "Images/marine-debris-aris3k-357.png",
+          "gt_objects": 4,
+          "detections": 6,
+          "tp": 1,
+          "fp": 5,
+          "fn": 3
+        },
+        {
+          "image": "Images/marine-debris-aris3k-426.png",
+          "gt_objects": 1,
+          "detections": 6,
+          "tp": 1,
+          "fp": 5,
+          "fn": 0
+        },
+        {
+          "image": "Images/marine-debris-aris3k-496.png",
+          "gt_objects": 2,
+          "detections": 3,
+          "tp": 1,
+          "fp": 2,
+          "fn": 1
+        },
+        {
+          "image": "Images/marine-debris-aris3k-565.png",
+          "gt_objects": 2,
+          "detections": 2,
+          "tp": 2,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "image": "Images/marine-debris-aris3k-634.png",
+          "gt_objects": 3,
+          "detections": 5,
+          "tp": 2,
+          "fp": 3,
+          "fn": 1
+        },
+        {
+          "image": "Images/marine-debris-aris3k-703.png",
+          "gt_objects": 3,
+          "detections": 4,
+          "tp": 0,
+          "fp": 4,
+          "fn": 3
+        },
+        {
+          "image": "Images/marine-debris-aris3k-773.png",
+          "gt_objects": 2,
+          "detections": 9,
+          "tp": 1,
+          "fp": 8,
+          "fn": 1
+        },
+        {
+          "image": "Images/marine-debris-aris3k-842.png",
+          "gt_objects": 3,
+          "detections": 7,
+          "tp": 2,
+          "fp": 5,
+          "fn": 1
+        },
+        {
+          "image": "Images/marine-debris-aris3k-911.png",
+          "gt_objects": 1,
+          "detections": 2,
+          "tp": 0,
+          "fp": 2,
+          "fn": 1
+        }
+      ],
+      "warning": ""
+    }
+  ]
+}
