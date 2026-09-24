@@ -30,8 +30,10 @@ website/dist/
 Users_*.zip
 
 # runtime data (generated)
+data/
 data/runtime/
 data/splits/
+data/samples/
 *.db
 *.db-wal
 *.db-shm
