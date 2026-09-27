@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from pathlib import Path
 from typing import Any
 
 import cv2
@@ -98,6 +99,34 @@ def analyze_survey(survey_id: str, job_id: str, emit) -> None:
     for i, img in enumerate(images):
         base = (i / n) * 100.0
         imeta: dict[str, Any] = {**survey_meta, **json.loads(img["meta_json"])}
+
+        # If frame missing lat/lon, attempt visual OCR telemetry extraction from raw image
+        raw_p = Path(img["raw_path"])
+        if raw_p.exists() and (imeta.get("lat") is None or imeta.get("lon") is None):
+            try:
+                from .ocr_telemetry import extract_visual_telemetry_from_bytes
+
+                content = raw_p.read_bytes()
+                extracted = extract_visual_telemetry_from_bytes(content)
+                if extracted:
+                    imeta = {**extracted, **imeta}
+                    side = imeta.get("side") or "unknown"
+                    nav_cols = {
+                        "captured_at": imeta.get("captured_at"),
+                        "latitude": imeta.get("lat"),
+                        "longitude": imeta.get("lon"),
+                        "heading_deg": imeta.get("heading_deg"),
+                        "altitude_m": imeta.get("altitude_m"),
+                        "sonar_side": side if side in ("port", "starboard") else None,
+                        "slant_range_m": imeta.get("range_m"),
+                    }
+                    db.update_image_nav(img["id"], imeta, nav_cols)
+                    for k, v in nav_cols.items():
+                        if v is not None:
+                            img[k] = v
+            except Exception:
+                pass
+
         db.set_image_status(img["id"], "analyzing")
         emit(job_id, "quality", base, f"Quality assessment — {img['filename']}")
         t0 = time.perf_counter()

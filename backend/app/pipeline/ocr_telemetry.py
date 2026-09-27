@@ -55,6 +55,21 @@ def parse_ddm_or_dms(text_val: str) -> float | None:
     return None
 
 
+def _run_async_safe(coro):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(lambda: asyncio.run(coro)).result()
+    else:
+        return asyncio.run(coro)
+
+
 def extract_visual_telemetry_from_bytes(content: bytes) -> dict[str, Any]:
     """Extract visual telemetry text from sonar acquisition software screenshot bytes."""
     extracted: dict[str, Any] = {}
@@ -68,7 +83,11 @@ def extract_visual_telemetry_from_bytes(content: bytes) -> dict[str, Any]:
     status_bar = img[int(h * 0.75) : h, 0:w]
     gray = cv2.cvtColor(cv2.resize(status_bar, (0, 0), fx=3, fy=3), cv2.COLOR_BGR2GRAY)
 
-    temp_path = Path("temp_ocr_frame.png").resolve()
+    import tempfile
+    import uuid
+
+    temp_filename = f"temp_ocr_{uuid.uuid4().hex[:8]}.png"
+    temp_path = Path(tempfile.gettempdir()) / temp_filename
     cv2.imwrite(str(temp_path), gray)
 
     lines: list[str] = []
@@ -88,7 +107,7 @@ def extract_visual_telemetry_from_bytes(content: bytes) -> dict[str, Any]:
             res = await engine.recognize_async(bitmap)
             return [line.text for line in res.lines]
 
-        lines = asyncio.run(_run_win_ocr())
+        lines = _run_async_safe(_run_win_ocr())
     except Exception:
         pass
     finally:
