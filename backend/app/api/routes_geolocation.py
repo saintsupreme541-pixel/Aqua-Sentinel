@@ -310,3 +310,64 @@ def _target_view(t: dict[str, Any]) -> dict[str, Any]:
         "geolocation_status": t.get("geolocation_status"),
         "geolocation_source": t.get("geolocation_source"),
     }
+
+
+class GeolocationCalculateRequest(BaseModel):
+    """Interactive Sonar Geolocation calculation request."""
+
+    latitude: float = Field(..., ge=-90, le=90, description="Vessel / Sensor latitude (deg)")
+    longitude: float = Field(..., ge=-180, le=180, description="Vessel / Sensor longitude (deg)")
+    heading_deg: float = Field(..., ge=0, le=360, description="Vessel heading (deg 0-360)")
+    altitude_m: float = Field(..., gt=0, description="Sensor altitude above seabed (m)")
+    side: str = Field(..., description="Sonar side: 'port' or 'starboard'")
+    slant_range_m: float | None = Field(None, gt=0, description="Direct slant range to target (m)")
+    row: float | None = Field(None, ge=0, description="Image pixel row of detection")
+    image_height: int = Field(default=0, ge=0, description="Image pixel height")
+    range_m: float | None = Field(None, gt=0, description="Maximum sonar slant range (m)")
+    layback_m: float | None = Field(None, ge=0, description="Towfish layback offset behind vessel (m)")
+    roll_deg: float | None = Field(None, ge=-45, le=45, description="Transducer roll angle (deg)")
+    pitch_deg: float | None = Field(None, ge=-45, le=45, description="Transducer pitch angle (deg)")
+    accuracy_m: float | None = Field(None, gt=0, description="GNSS / Sensor accuracy (m)")
+
+
+@router.post("/geolocation/calculate")
+def calculate_geolocation(body: GeolocationCalculateRequest) -> dict[str, Any]:
+    """Interactive Sonar Geolocation Calculator.
+
+    Derives object coordinates, ground range, bearing, 2-sigma uncertainty ellipse,
+    and GeoJSON uncertainty polygon from observed vessel position, heading, altitude,
+    side, slant range, and optional sensor parameters (layback, roll, pitch, accuracy).
+    """
+    meta = {
+        "lat": body.latitude,
+        "lon": body.longitude,
+        "heading_deg": body.heading_deg,
+        "altitude_m": body.altitude_m,
+        "side": body.side,
+        "range_m": body.range_m,
+        "layback_m": body.layback_m,
+        "roll_deg": body.roll_deg,
+        "pitch_deg": body.pitch_deg,
+        "accuracy_m": body.accuracy_m,
+    }
+    geo = geolocate.locate_detection(
+        meta=meta,
+        slant_range_m=body.slant_range_m,
+        image_height=body.image_height,
+        row=body.row,
+    )
+    if geo.get("known") and geo.get("lat") is not None and geo.get("lon") is not None:
+        ell = geo.get("ellipse") or {}
+        if ell:
+            poly = geolocate.ellipse_polygon(
+                lat=geo["lat"],
+                lon=geo["lon"],
+                semi_major_m=ell.get("semi_major_m", 5.0),
+                semi_minor_m=ell.get("semi_minor_m", 5.0),
+                rotation_deg=ell.get("rotation_deg", 0.0),
+            )
+            geo["ellipse_polygon_geojson"] = {
+                "type": "Polygon",
+                "coordinates": [poly],
+            }
+    return geo

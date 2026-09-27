@@ -106,6 +106,34 @@ def validate_nav(meta: dict) -> tuple[dict, list[str]]:
         else:
             clean["range_m"] = rng
 
+    layback = _finite_float(meta.get("layback") or meta.get("layback_m"))
+    if layback is not None:
+        if layback < 0:
+            issues.append("layback invalid (must be >= 0)")
+        else:
+            clean["layback_m"] = layback
+
+    roll = _finite_float(meta.get("roll") or meta.get("roll_deg"))
+    if roll is not None:
+        if not (-45.0 <= roll <= 45.0):
+            issues.append("roll angle outside valid range [-45, 45] deg")
+        else:
+            clean["roll_deg"] = roll
+
+    pitch = _finite_float(meta.get("pitch") or meta.get("pitch_deg"))
+    if pitch is not None:
+        if not (-45.0 <= pitch <= 45.0):
+            issues.append("pitch angle outside valid range [-45, 45] deg")
+        else:
+            clean["pitch_deg"] = pitch
+
+    accuracy = _finite_float(meta.get("accuracy_m") or meta.get("accuracy") or meta.get("gps_accuracy"))
+    if accuracy is not None:
+        if accuracy <= 0:
+            issues.append("accuracy invalid (must be > 0)")
+        else:
+            clean["accuracy_m"] = accuracy
+
     return clean, issues
 
 
@@ -119,6 +147,10 @@ def nav_inputs(meta: dict) -> dict[str, bool]:
         "sonar_side": "side" in clean,
         "altitude_m": "altitude_m" in clean,
         "sonar_range_m": "range_m" in clean,
+        "layback_m": "layback_m" in clean,
+        "roll_deg": "roll_deg" in clean,
+        "pitch_deg": "pitch_deg" in clean,
+        "accuracy_m": "accuracy_m" in clean,
     }
 
 
@@ -187,6 +219,153 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     dl = math.radians(lon2 - lon1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     return 2 * EARTH_RADIUS_M * math.asin(math.sqrt(a))
+
+
+def geodesic_destination(lat: float, lon: float, bearing_deg: float, distance_m: float) -> tuple[float, float]:
+    """WGS84 ellipsoidal direct geodesic calculation for high-precision offset positioning."""
+    if distance_m <= 0:
+        return lat, lon
+    try:
+        a = 6378137.0
+        f = 1.0 / 298.257223563
+        b = a * (1.0 - f)
+        lat1 = math.radians(lat)
+        lon1 = math.radians(lon)
+        alpha1 = math.radians(bearing_deg)
+
+        tanU1 = (1.0 - f) * math.tan(lat1)
+        cosU1 = 1.0 / math.sqrt(1.0 + tanU1 * tanU1)
+        sinU1 = tanU1 * cosU1
+
+        sigma1 = math.atan2(tanU1, math.cos(alpha1))
+        sinAlpha = cosU1 * math.sin(alpha1)
+        cosSqAlpha = 1.0 - sinAlpha * sinAlpha
+
+        uSq = cosSqAlpha * (a * a - b * b) / (b * b) if cosSqAlpha != 0 else 0.0
+        A = 1.0 + uSq / 16384.0 * (4096.0 + uSq * (-768.0 + uSq * (320.0 - 175.0 * uSq)))
+        B = uSq / 1024.0 * (256.0 + uSq * (-128.0 + uSq * (74.0 - 47.0 * uSq)))
+
+        sigma = distance_m / (b * A)
+        sigmaP = 2.0 * math.pi
+
+        cos2SigmaM = 0.0
+        sinSigma = 0.0
+        cosSigma = 0.0
+
+        for _ in range(100):
+            if abs(sigma - sigmaP) <= 1e-12:
+                break
+            cos2SigmaM = math.cos(2.0 * sigma1 + sigma)
+            sinSigma = math.sin(sigma)
+            cosSigma = math.cos(sigma)
+            deltaSigma = B * sinSigma * (
+                cos2SigmaM
+                + B / 4.0 * (
+                    cosSigma * (-1.0 + 2.0 * cos2SigmaM * cos2SigmaM)
+                    - B / 6.0 * cos2SigmaM * (-3.0 + 4.0 * sinSigma * sinSigma) * (-3.0 + 4.0 * cos2SigmaM * cos2SigmaM)
+                )
+            )
+            sigmaP = sigma
+            sigma = distance_m / (b * A) + deltaSigma
+
+        tmp = sinU1 * sinSigma - cosU1 * cosSigma * math.cos(alpha1)
+        lat2 = math.atan2(
+            sinU1 * cosSigma + cosU1 * sinSigma * math.cos(alpha1),
+            (1.0 - f) * math.sqrt(sinAlpha * sinAlpha + tmp * tmp),
+        )
+        lambda_val = math.atan2(sinSigma * math.sin(alpha1), cosU1 * cosSigma - sinU1 * sinSigma * math.cos(alpha1))
+        C = f / 16.0 * cosSqAlpha * (4.0 + f * (4.0 - 3.0 * cosSqAlpha))
+        L = lambda_val - (1.0 - C) * f * sinAlpha * (
+            sigma + C * sinSigma * (cos2SigmaM + C * cosSigma * (-1.0 + 2.0 * cos2SigmaM * cos2SigmaM))
+        )
+
+        lon2 = lon1 + L
+        res_lat = math.degrees(lat2)
+        res_lon = (math.degrees(lon2) + 180.0) % 360.0 - 180.0
+        if math.isfinite(res_lat) and math.isfinite(res_lon):
+            return res_lat, res_lon
+    except (ValueError, ZeroDivisionError, OverflowError):
+        pass
+    return haversine_destination(lat, lon, bearing_deg, distance_m)
+
+
+def fused_target_location(located_observations: list[dict]) -> dict:
+    """Optimal Inverse-Variance Weighted Location Fusion across multi-pass target observations.
+
+    Combines multiple located observations of a target into a single optimal
+    fused coordinate estimate with reduced uncertainty.
+    """
+    if not located_observations:
+        return {
+            "available": False,
+            "status": "UNAVAILABLE",
+            "lat": None,
+            "lon": None,
+            "uncertainty_m": None,
+            "ellipse": None,
+            "n_observations": 0,
+            "note": "no located observations available for target location fusion",
+        }
+
+    valid_obs = [obs for obs in located_observations if obs.get("lat") is not None and obs.get("lon") is not None]
+    if not valid_obs:
+        return {
+            "available": False,
+            "status": "UNAVAILABLE",
+            "lat": None,
+            "lon": None,
+            "uncertainty_m": None,
+            "ellipse": None,
+            "n_observations": 0,
+            "note": "no observation had valid coordinates",
+        }
+
+    if len(valid_obs) == 1:
+        obs = valid_obs[0]
+        return {
+            "available": True,
+            "status": "DERIVED",
+            "lat": obs["lat"],
+            "lon": obs["lon"],
+            "uncertainty_m": obs.get("uncertainty_m"),
+            "ellipse": obs.get("ellipse"),
+            "n_observations": 1,
+            "fusion_method": "single_observation_pass_through",
+            "weights": [1.0],
+            "note": "single located observation carried directly",
+        }
+
+    weights = []
+    for obs in valid_obs:
+        unc = obs.get("uncertainty_m")
+        if unc is None or unc <= 0:
+            unc = 10.0
+        w = 1.0 / (max(unc, 0.5) ** 2)
+        weights.append(w)
+
+    total_w = sum(weights)
+    norm_weights = [w / total_w for w in weights]
+
+    fused_lat = sum(w * obs["lat"] for w, obs in zip(norm_weights, valid_obs))
+    fused_lon = sum(w * obs["lon"] for w, obs in zip(norm_weights, valid_obs))
+    fused_unc = round(1.0 / math.sqrt(total_w), 2)
+
+    smax = round(max(fused_unc * 1.2, 0.5), 1)
+    smin = round(max(fused_unc * 0.8, 0.3), 1)
+    fused_ellipse = {"semi_major_m": smax, "semi_minor_m": smin, "rotation_deg": 0.0}
+
+    return {
+        "available": True,
+        "status": "DERIVED",
+        "lat": round(fused_lat, 7),
+        "lon": round(fused_lon, 7),
+        "uncertainty_m": fused_unc,
+        "ellipse": fused_ellipse,
+        "n_observations": len(valid_obs),
+        "fusion_method": "inverse_variance_weighted_least_squares",
+        "weights": [round(w, 4) for w in norm_weights],
+        "note": f"optimal multi-pass location fusion across {len(valid_obs)} observations (uncertainty reduced to {fused_unc:.1f} m)",
+    }
 
 
 @overload
@@ -401,29 +580,78 @@ def locate_detection(
             unavailable_prov["issues"] = [*issues, "derived slant range is zero/invalid at this row"]
             return unknown("slant range unavailable", unavailable_prov)
 
-    if slant <= altitude:
+    # 1. Towfish Layback Correction
+    layback = clean.get("layback_m")
+    derived_info: dict[str, Any] = {}
+    assumptions: list[str] = [
+        "flat-seabed sonar geometry",
+        "object abeam of the track: starboard = heading+90°, port = heading−90°",
+    ]
+
+    if layback is not None and layback > 0:
+        sensor_lat, sensor_lon = geodesic_destination(
+            float(clean["lat"]), float(clean["lon"]), (heading + 180.0) % 360.0, layback
+        )
+        assumptions.append(f"towfish layback correction applied ({layback:.1f} m behind vessel)")
+        derived_info["layback_applied_m"] = round(layback, 2)
+    else:
+        sensor_lat, sensor_lon = float(clean["lat"]), float(clean["lon"])
+
+    # 2. Transducer Roll & Pitch Attitude Compensation
+    roll_deg = clean.get("roll_deg")
+    pitch_deg = clean.get("pitch_deg")
+    effective_altitude = altitude
+    along_track_offset_m = 0.0
+
+    if roll_deg is not None and abs(roll_deg) > 0.01:
+        roll_rad = math.radians(roll_deg)
+        effective_altitude = max(0.1, altitude * math.cos(roll_rad))
+        derived_info["roll_deg"] = round(roll_deg, 2)
+        derived_info["effective_altitude_m"] = round(effective_altitude, 2)
+        assumptions.append(f"transducer roll compensation applied ({roll_deg:.1f}° roll)")
+
+    if pitch_deg is not None and abs(pitch_deg) > 0.01:
+        pitch_rad = math.radians(pitch_deg)
+        along_track_offset_m = altitude * math.tan(pitch_rad)
+        derived_info["pitch_deg"] = round(pitch_deg, 2)
+        derived_info["along_track_offset_m"] = round(along_track_offset_m, 2)
+        assumptions.append(f"transducer pitch compensation applied ({pitch_deg:.1f}° pitch)")
+
+    if slant <= effective_altitude:
         # Physically impossible for an abeam seabed object: the slant range
         # never leaves the sonar plane, so there is NO valid horizontal
         # offset.  Refuse rather than collapse the fix onto the frame
         # position (which would fabricate a location).
         unavailable_prov["issues"] = [
             *issues,
-            f"slant range ({slant:.2f} m) <= altitude ({altitude:.2f} m) — no physically valid ground offset",
+            f"slant range ({slant:.2f} m) <= effective altitude ({effective_altitude:.2f} m) — no physically valid ground offset",
         ]
         return unknown("geometry invalid: slant range does not exceed altitude", unavailable_prov)
 
-    ground = slant_to_ground(slant, altitude)
+    ground = slant_to_ground(slant, effective_altitude)
     bearing = (heading + (90.0 if side == "starboard" else -90.0)) % 360.0
-    lat, lon = haversine_destination(float(clean["lat"]), float(clean["lon"]), bearing, ground)
 
+    # Primary offset from transducer
+    lat, lon = geodesic_destination(sensor_lat, sensor_lon, bearing, ground)
+
+    # Secondary offset from pitch along-track displacement
+    if abs(along_track_offset_m) > 0.01:
+        pitch_bearing = heading if along_track_offset_m > 0 else (heading + 180.0) % 360.0
+        lat, lon = geodesic_destination(lat, lon, pitch_bearing, abs(along_track_offset_m))
+
+    gps_err = max(0.5, float(clean.get("accuracy_m", 5.0)))
     unc = _monte_carlo_uncertainty(
-        vessel_lat=float(clean["lat"]),
-        vessel_lon=float(clean["lon"]),
+        vessel_lat=sensor_lat,
+        vessel_lon=sensor_lon,
         heading=heading,
         side=side,
         slant_range_m=slant,
-        altitude_m=altitude,
+        altitude_m=effective_altitude,
+        gps_err_m=gps_err,
     )
+    if "accuracy_m" in clean:
+        derived_info["gps_accuracy_used_m"] = round(gps_err, 1)
+
     provenance: dict[str, Any] = {
         "kind": "derived",
         "status": "approximate",
@@ -434,11 +662,9 @@ def locate_detection(
             "bearing_deg": round(bearing, 1),
             "slant_range_m": round(slant, 2),
             "ground_range_m": round(ground, 2),
+            **derived_info,
         },
-        "assumptions": [
-            "flat-seabed sonar geometry",
-            "object abeam of the track: starboard = heading+90°, port = heading−90°",
-        ],
+        "assumptions": assumptions,
         "issues": [],
         "note": (
             "frame position ≠ object position — the offset is derived from sonar "
