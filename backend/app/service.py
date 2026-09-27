@@ -65,6 +65,19 @@ def extract_exif_metadata(content: bytes) -> dict[str, Any]:
                 extracted["captured_at"] = str(dt_str).strip()
     except Exception:
         pass
+
+    # If no binary EXIF GPS was found, run visual OCR telemetry extraction on screenshot OSD
+    if "lat" not in extracted or "lon" not in extracted:
+        try:
+            from .pipeline.ocr_telemetry import extract_visual_telemetry_from_bytes
+
+            vmeta = extract_visual_telemetry_from_bytes(content)
+            for k, v in vmeta.items():
+                if k not in extracted or extracted[k] is None:
+                    extracted[k] = v
+        except Exception:
+            pass
+
     return extracted
 
 
